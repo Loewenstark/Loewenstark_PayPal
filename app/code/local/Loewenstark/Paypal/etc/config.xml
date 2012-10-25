@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <Loewenstark_Paypal>
+            <version>0.0.0.1</version>
+        </Loewenstark_Paypal>
+    </modules>
+    <global>
+        <models>
+            <loe_paypal>
+                <class>Loewenstark_Paypal_Model</class>
+            </loe_paypal>
+            <paypal>
+                <rewrite>
+                    <standard>Loewenstark_Paypal_Model_Standard</standard>
+                    <cart>Loewenstark_Paypal_Model_Cart</cart>
+                </rewrite>
+            </paypal>
+        </models>
+    </global>
+</config>
