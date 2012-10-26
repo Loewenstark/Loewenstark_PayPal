@@ -3,6 +3,7 @@
 class Loewenstark_Paypal_Model_Standard
 extends Mage_Paypal_Model_Standard
 {
+
     /**
      * Return form field array
      *
@@ -15,7 +16,7 @@ extends Mage_Paypal_Model_Standard
         /* @var $api Mage_Paypal_Model_Api_Standard */
         $api = Mage::getModel('paypal/api_standard')->setConfigObject($this->getConfig());
         $api->setOrderId($orderIncrementId)
-            ->setCurrencyCode($order->getOrderCurrencyCode())
+            ->setCurrencyCode($this->getCurrencyCode($order))
             //->setPaymentAction()
             ->setOrder($order)
             ->setNotifyUrl(Mage::getUrl('paypal/ipn/'))
@@ -39,5 +40,18 @@ extends Mage_Paypal_Model_Standard
         $api->setLocale($api->getLocaleCode());
         $result = $api->getStandardCheckoutRequest();
         return $result;
+    }
+    
+    /**
+     * get Order Currency Code
+     *
+     * @return ISO Currency Code
+     */
+    protected function getCurrencyCode(Mage_Sales_Model_Order $order)
+    {
+        $obj = new Varien_Object();
+        $obj->setCurrencyCode($order->getOrderCurrencyCode());
+        Mage::dispatchEvent('loe_paypal_currency_code', array('obj' => $obj, "order" => $order, "standard" => $this));
+        return $obj->getCurrencyCode();
     }
 }

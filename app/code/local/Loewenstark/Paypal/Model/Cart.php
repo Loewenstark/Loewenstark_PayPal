@@ -5,6 +5,8 @@ extends Mage_Paypal_Model_Cart
 {
     /**
      * (re)Render all items and totals
+     * 
+     * just the original class, $this->_totals
      */
     protected function _render()
     {
@@ -26,23 +28,13 @@ extends Mage_Paypal_Model_Cart
         $shippingDescription = '';
         if ($this->_salesEntity instanceof Mage_Sales_Model_Order) {
             $shippingDescription = $this->_salesEntity->getShippingDescription();
-            $this->_totals = array(
-                self::TOTAL_SUBTOTAL => $this->_salesEntity->getSubtotal(),
-                self::TOTAL_TAX      => $this->_salesEntity->getTaxAmount(),
-                self::TOTAL_SHIPPING => $this->_salesEntity->getShippingAmount(),
-                self::TOTAL_DISCOUNT => abs($this->_salesEntity->getDiscountAmount()),
-            );
+            $this->_totals = $this->getSalesEntity();
             $this->_applyHiddenTaxWorkaround($this->_salesEntity);
         } else {
             $address = $this->_salesEntity->getIsVirtual() ?
                 $this->_salesEntity->getBillingAddress() : $this->_salesEntity->getShippingAddress();
             $shippingDescription = $address->getShippingDescription();
-            $this->_totals = array (
-                self::TOTAL_SUBTOTAL => $this->_salesEntity->getSubtotal(),
-                self::TOTAL_TAX      => $address->getTaxAmount(),
-                self::TOTAL_SHIPPING => $address->getShippingAmount(),
-                self::TOTAL_DISCOUNT => abs($address->getDiscountAmount()),
-            );
+            $this->_totals = $this->getAddressSalesEntity();
             $this->_applyHiddenTaxWorkaround($address);
         }
         $originalDiscount = $this->_totals[self::TOTAL_DISCOUNT];
@@ -82,5 +74,42 @@ extends Mage_Paypal_Model_Cart
         }
 
         $this->_shouldRender = false;
+    }
+    
+    /**
+     * getAdressSalesEntity
+     *
+     * @return array about the Order
+     */
+    protected function getAddressSalesEntity()
+    {
+        $ar = array (
+            self::TOTAL_SUBTOTAL => $this->_salesEntity->getSubtotal(),
+            self::TOTAL_TAX      => $address->getTaxAmount(),
+            self::TOTAL_SHIPPING => $address->getShippingAmount(),
+            self::TOTAL_DISCOUNT => abs($address->getDiscountAmount()),
+        );
+        $obj = new Varien_Object($ar);
+        Mage::dispatchEvent('loe_paypal_address_sales_entity', array('obj' => $obj));
+        return $obj->getData();
+    }
+    
+    /**
+     * getSalesEntity
+     *
+     * @return array about the Order
+     */
+    protected function getSalesEntity()
+    {
+        $ar = array(
+            self::TOTAL_SUBTOTAL => $this->_salesEntity->getSubtotal(),
+            self::TOTAL_TAX      => $this->_salesEntity->getTaxAmount(),
+            self::TOTAL_SHIPPING => $this->_salesEntity->getShippingAmount(),
+            self::TOTAL_DISCOUNT => abs($this->_salesEntity->getDiscountAmount()),
+        );
+        $obj = new Varien_Object($ar);
+        Mage::dispatchEvent('loe_paypal_sales_entity', array('obj' => $obj));
+        return $obj->getData();
+        return 
     }
 }
