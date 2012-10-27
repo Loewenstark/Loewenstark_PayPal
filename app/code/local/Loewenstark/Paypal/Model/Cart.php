@@ -90,7 +90,7 @@ extends Mage_Paypal_Model_Cart
             self::TOTAL_DISCOUNT => abs($address->getDiscountAmount()),
         );
         $obj = new Varien_Object($ar);
-        Mage::dispatchEvent('loe_paypal_address_sales_entity', array('obj' => $obj));
+        Mage::dispatchEvent('loe_paypal_address_sales_entity', array('obj' => $obj, "class" => $this));
         return $obj->getData();
     }
     
@@ -108,7 +108,7 @@ extends Mage_Paypal_Model_Cart
             self::TOTAL_DISCOUNT => abs($this->_salesEntity->getDiscountAmount()),
         );
         $obj = new Varien_Object($ar);
-        Mage::dispatchEvent('loe_paypal_sales_entity', array('obj' => $obj));
+        Mage::dispatchEvent('loe_paypal_sales_entity', array('obj' => $obj, "class" => $this));
         return $obj->getData();
         return 
     }
