@@ -84,7 +84,7 @@ extends Mage_Paypal_Model_Cart
         $this->_areItemsValid = false;
         $this->_areTotalsValid = false;
 
-        $referenceAmount = $this->_salesEntity->geGrandTotal();
+        $referenceAmount = $this->_salesEntity->getGrandTotal();
 
         $itemsSubtotal = 0;
         foreach ($this->_items as $i) {
