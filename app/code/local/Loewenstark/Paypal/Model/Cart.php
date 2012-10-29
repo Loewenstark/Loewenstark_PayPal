@@ -77,6 +77,80 @@ extends Mage_Paypal_Model_Cart
     }
     
     /**
+     * Check the line items and totals according to PayPal business logic limitations
+     */
+    protected function _validate()
+    {
+        $this->_areItemsValid = false;
+        $this->_areTotalsValid = false;
+
+        $referenceAmount = $this->_salesEntity->geGrandTotal();
+
+        $itemsSubtotal = 0;
+        foreach ($this->_items as $i) {
+            $itemsSubtotal = $itemsSubtotal + $i['qty'] * $i['amount'];
+        }
+        $sum = $itemsSubtotal + $this->_totals[self::TOTAL_TAX];
+        if (!$this->_isShippingAsItem) {
+            $sum += $this->_totals[self::TOTAL_SHIPPING];
+        }
+        if (!$this->_isDiscountAsItem) {
+            $sum -= $this->_totals[self::TOTAL_DISCOUNT];
+        }
+        /**
+         * numbers are intentionally converted to strings because of possible comparison error
+         * see http://php.net/float
+         */
+        // match sum of all the items and totals to the reference amount
+        if (sprintf('%.4F', $sum) == sprintf('%.4F', $referenceAmount)) {
+            $this->_areItemsValid = true;
+        }
+
+        // PayPal requires to have discount less than items subtotal
+        if (!$this->_isDiscountAsItem) {
+            $this->_areTotalsValid = round($this->_totals[self::TOTAL_DISCOUNT], 4) < round($itemsSubtotal, 4);
+        } else {
+            $this->_areTotalsValid = $itemsSubtotal > 0.00001;
+        }
+
+        $this->_areItemsValid = $this->_areItemsValid && $this->_areTotalsValid;
+    }
+    
+    /**
+     * Add a usual line item with amount and qty
+     *
+     * @param Varien_Object $salesItem
+     * @return Varien_Object
+     */
+    protected function _addRegularItem(Varien_Object $salesItem)
+    {
+        if ($this->_salesEntity instanceof Mage_Sales_Model_Order) {
+            $qty = (int) $salesItem->getQtyOrdered();
+            $amount = (float) $salesItem->getPrice();
+            // TODO: nominal item for order
+        } else {
+            $qty = (int) $salesItem->getTotalQty();
+            $amount = $salesItem->isNominal() ? 0 : (float) $salesItem->getCalculationPrice();
+        }
+        // workaround in case if item subtotal precision is not compatible with PayPal (.2)
+        $subAggregatedLabel = '';
+        if ($amount - round($amount, 2)) {
+            $amount = $amount * $qty;
+            $subAggregatedLabel = ' x' . $qty;
+            $qty = 1;
+        }
+
+        // aggregate item price if item qty * price does not match row total
+        if (($amount * $qty) != $salesItem->getRowTotal()) {
+            $amount = (float) $salesItem->getRowTotal();
+            $subAggregatedLabel = ' x' . $qty;
+            $qty = 1;
+        }
+
+        return $this->addItem($salesItem->getName() . $subAggregatedLabel, $qty, $amount, $salesItem->getSku());
+    }
+    
+    /**
      * Get/Set for the specified variable.
      * If the value changes, the re-rendering is commenced
      *
@@ -95,7 +169,9 @@ extends Mage_Paypal_Model_Cart
         }
         return $this->$var;
     }
+    
 
+    
     /**
      * Add "hidden" discount and shipping tax
      *
@@ -119,8 +195,8 @@ extends Mage_Paypal_Model_Cart
      */
     protected function _applyHiddenTaxWorkaround($salesEntity)
     {
-        $this->_totals[self::TOTAL_TAX] += (float)$salesEntity->getBaseHiddenTaxAmount();
-        $this->_totals[self::TOTAL_TAX] += (float)$salesEntity->getBaseShippingHiddenTaxAmount();
+        $this->_totals[self::TOTAL_TAX] += (float)$salesEntity->getHiddenTaxAmount();
+        $this->_totals[self::TOTAL_TAX] += (float)$salesEntity->getShippingHiddenTaxAmount();
     }
     
     /**
