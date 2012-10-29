@@ -2,7 +2,7 @@
 
 class Loewenstark_Paypal_Model_Cart
 extends Mage_Paypal_Model_Cart
-{
+{    
     /**
      * (re)Render all items and totals
      * 
@@ -28,13 +28,13 @@ extends Mage_Paypal_Model_Cart
         $shippingDescription = '';
         if ($this->_salesEntity instanceof Mage_Sales_Model_Order) {
             $shippingDescription = $this->_salesEntity->getShippingDescription();
-            $this->_totals = $this->getSalesEntity();
+            $this->_totals = $this->getSalesOrderEntity();
             $this->_applyHiddenTaxWorkaround($this->_salesEntity);
         } else {
             $address = $this->_salesEntity->getIsVirtual() ?
                 $this->_salesEntity->getBillingAddress() : $this->_salesEntity->getShippingAddress();
             $shippingDescription = $address->getShippingDescription();
-            $this->_totals = $this->getAddressSalesEntity();
+            $this->_totals = $this->getAddressSalesOrderEntity();
             $this->_applyHiddenTaxWorkaround($address);
         }
         $originalDiscount = $this->_totals[self::TOTAL_DISCOUNT];
@@ -77,11 +77,58 @@ extends Mage_Paypal_Model_Cart
     }
     
     /**
+     * Get/Set for the specified variable.
+     * If the value changes, the re-rendering is commenced
+     *
+     * @param string $var
+     * @param $setValue
+     * @return bool|Mage_Paypal_Model_Cart
+     */
+    protected function _totalAsItem($var, $setValue = null)
+    {
+        if (null !== $setValue) {
+            if ($setValue != $this->$var) {
+                $this->_shouldRender = true;
+            }
+            $this->$var = $setValue;
+            return $this;
+        }
+        return $this->$var;
+    }
+
+    /**
+     * Add "hidden" discount and shipping tax
+     *
+     * Go ahead, try to understand ]:->
+     *
+     * Tax settings for getting "discount tax":
+     * - Catalog Prices = Including Tax
+     * - Apply Customer Tax = After Discount
+     * - Apply Discount on Prices = Including Tax
+     *
+     * Test case for getting "hidden shipping tax":
+     * - Make sure shipping is taxable (set shipping tax class)
+     * - Catalog Prices = Including Tax
+     * - Shipping Prices = Including Tax
+     * - Apply Customer Tax = After Discount
+     * - Create a shopping cart price rule with % discount applied to the Shipping Amount
+     * - run shopping cart and estimate shipping
+     * - go to PayPal
+     *
+     * @param Mage_Core_Model_Abstract $salesEntity
+     */
+    protected function _applyHiddenTaxWorkaround($salesEntity)
+    {
+        $this->_totals[self::TOTAL_TAX] += (float)$salesEntity->getBaseHiddenTaxAmount();
+        $this->_totals[self::TOTAL_TAX] += (float)$salesEntity->getBaseShippingHiddenTaxAmount();
+    }
+    
+    /**
      * getAdressSalesEntity
      *
      * @return array about the Order
      */
-    protected function getAddressSalesEntity()
+    protected function getAddressSalesOrderEntity()
     {
         $ar = array (
             self::TOTAL_SUBTOTAL => $this->_salesEntity->getSubtotal(),
@@ -99,7 +146,7 @@ extends Mage_Paypal_Model_Cart
      *
      * @return array about the Order
      */
-    protected function getSalesEntity()
+    protected function getSalesOrderEntity()
     {
         $ar = array(
             self::TOTAL_SUBTOTAL => $this->_salesEntity->getSubtotal(),
@@ -110,6 +157,5 @@ extends Mage_Paypal_Model_Cart
         $obj = new Varien_Object($ar);
         Mage::dispatchEvent('loe_paypal_sales_entity', array('obj' => $obj, "class" => $this));
         return $obj->getData();
-        return 
     }
 }

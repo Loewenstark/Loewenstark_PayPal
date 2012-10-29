@@ -46,6 +46,19 @@ extends Mage_Paypal_Model_Standard
     }
     
     /**
+     * Aggregated cart summary label getter
+     *
+     * @return string
+     */
+    protected function _getAggregatedCartSummary()
+    {
+        if ($this->_config->lineItemsSummary) {
+            return $this->_config->lineItemsSummary;
+        }
+        return Mage::app()->getStore($this->getStore())->getFrontendName();
+    }
+    
+    /**
      * get Order Currency Code
      *
      * @return ISO Currency Code
