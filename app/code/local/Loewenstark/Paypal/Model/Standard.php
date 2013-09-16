@@ -76,7 +76,9 @@ extends Mage_Paypal_Model_Standard
      */
     protected function setCurrencyCode($currency)
     {
-        $this->_ordercurrency = $currency;
+        $objcurrency = new Varien_Object(array('code' => $currency))
+        Mage::dispatchEvent('loe_paypal_set_currency_code', array("model" => $this, 'obj'=> $objcurrency));
+        $this->_ordercurrency = $objcurrency->getData('code');
         return $this;
     }
 }
